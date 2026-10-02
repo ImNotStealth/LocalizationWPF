@@ -544,6 +544,110 @@ namespace LocalizationWPF
 
             EnsureTrailingEmptyRow();
             RefreshGrid();
+        } 
+
+        private void ImportJson(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import JSON",
+                Filter = "JSON file (*.json)|*.json"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            try
+            {
+                ImportFromJson(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur pendant l'import :\n{ex.Message}", "Import", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ImportFromJson(string path)
+        {
+            var dlg = new OpenFileDialog
+            {
+                Filter = "Fichier JSON (*.json)|*.json",
+                Multiselect = true
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            LanguageGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            var data = new Dictionary<string, Dictionary<string, string>>(); // id -> (langue -> texte)
+            var languages = new List<string>();
+
+            void AddLanguage(string lang)
+            {
+                if (!languages.Contains(lang))
+                    languages.Add(lang);
+            }
+
+            try
+            {
+                foreach (string filePath in dlg.FileNames)
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllText(filePath, Encoding.UTF8));
+
+                    if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                        throw new FormatException($"{Path.GetFileName(filePath)} : l'objet racine est attendu.");
+
+                    string fileLang = Path.GetFileNameWithoutExtension(filePath);
+
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        if (!data.TryGetValue(prop.Name, out var translations))
+                            data[prop.Name] = translations = new Dictionary<string, string>();
+
+                        if (prop.Value.ValueKind == JsonValueKind.Object)
+                        {
+                            foreach (var t in prop.Value.EnumerateObject())
+                            {
+                                AddLanguage(t.Name);
+                                translations[t.Name] = t.Value.ValueKind == JsonValueKind.String
+                                    ? t.Value.GetString() ?? ""
+                                    : t.Value.ToString();
+                            }
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            AddLanguage(fileLang);
+                            translations[fileLang] = prop.Value.GetString() ?? "";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or FormatException or IOException)
+            {
+                MessageBox.Show($"Import impossible :\n{ex.Message}", "JSON", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            _table.Clear();
+            _table.Columns.Clear();
+            _table.Columns.Add("ID", typeof(string));
+            foreach (string lang in languages)
+            {
+                if (!_table.Columns.Contains(lang))
+                    _table.Columns.Add(lang, typeof(string));
+            }
+
+            foreach (var (id, translations) in data)
+            {
+                DataRow row = _table.NewRow();
+                row["ID"] = id;
+                foreach (var (lang, text) in translations)
+                    row[lang] = text;
+                _table.Rows.Add(row);
+            }
+
+            EnsureTrailingEmptyRow();
+            RefreshGrid();
         }
 
         private void ImportCsvClick(object sender, RoutedEventArgs e)

@@ -11,12 +11,12 @@
             <MenuItem x:Name="FileMenuItem" Header="File">
                 <MenuItem x:Name="OpenMenuItem" Header="Open">
                     <MenuItem x:Name="ImportCSV" Header="Import CSV" Click="ImportCsvClick"/>
-                    <MenuItem Header="Import XML..." Click="ImportXmlClick"/>
-                    <MenuItem x:Name="ImportJSON" Header="Import JSON"/>
+                    <MenuItem Header="Import XML" Click="ImportXmlClick"/>
+                    <MenuItem x:Name="ImportJSON" Header="Import JSON" Click="ImportJson"/>
                 </MenuItem>
                 <MenuItem x:Name="ExportMenuItem" Header="Export">
                     <MenuItem x:Name="ExportCSV" Header="Export CSV" Tag="CSV" Click="ExportMenuItem_Click"/>
-                    <MenuItem Header="XML" Tag="XML" Click="ExportMenuItem_Click"/>
+                    <MenuItem Header="Export XML" Tag="XML" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportJSON" Header="Export JSON" Tag="JSON" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportCS" Header="Export CS" Tag="CS" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportCPP" Header="Export CPP" Tag="CPP" Click="ExportMenuItem_Click"/>
