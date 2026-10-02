@@ -161,16 +161,8 @@ namespace LocalizationWPF
             App.Current.Shutdown();
         }
 
-        private void ExportButtonJSON(object sender)
+        private void ExportButtonJSON(string path)
         {
-            var dlg = new SaveFileDialog
-            {
-                Filter = "Fichier JSON (*.json)|*.json",
-                FileName = "localization.json"
-            };
-            if (dlg.ShowDialog() != true)
-                return;
-
             var result = new Dictionary<string, Dictionary<string, string>>();
 
             foreach (DataRow row in _table.Rows)
@@ -199,7 +191,7 @@ namespace LocalizationWPF
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
-            File.WriteAllText(dlg.FileName, JsonSerializer.Serialize(result, options), Encoding.UTF8);
+            File.WriteAllText(path, JsonSerializer.Serialize(result, options), Encoding.UTF8);
         }
 
         private string? Prompt(string title, string initial)
@@ -569,14 +561,6 @@ namespace LocalizationWPF
 
         private void ImportFromJson(string path)
         {
-            var dlg = new OpenFileDialog
-            {
-                Filter = "Fichier JSON (*.json)|*.json",
-                Multiselect = true
-            };
-            if (dlg.ShowDialog() != true)
-                return;
-
             LanguageGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
             var data = new Dictionary<string, Dictionary<string, string>>(); // id -> (langue -> texte)
@@ -590,35 +574,32 @@ namespace LocalizationWPF
 
             try
             {
-                foreach (string filePath in dlg.FileNames)
+                using var doc = JsonDocument.Parse(File.ReadAllText(path, Encoding.UTF8));
+
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                    throw new FormatException($"{Path.GetFileName(path)} : l'objet racine est attendu.");
+
+                string fileLang = Path.GetFileNameWithoutExtension(path);
+
+                foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    using var doc = JsonDocument.Parse(File.ReadAllText(filePath, Encoding.UTF8));
+                    if (!data.TryGetValue(prop.Name, out var translations))
+                        data[prop.Name] = translations = new Dictionary<string, string>();
 
-                    if (doc.RootElement.ValueKind != JsonValueKind.Object)
-                        throw new FormatException($"{Path.GetFileName(filePath)} : l'objet racine est attendu.");
-
-                    string fileLang = Path.GetFileNameWithoutExtension(filePath);
-
-                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    if (prop.Value.ValueKind == JsonValueKind.Object)
                     {
-                        if (!data.TryGetValue(prop.Name, out var translations))
-                            data[prop.Name] = translations = new Dictionary<string, string>();
-
-                        if (prop.Value.ValueKind == JsonValueKind.Object)
+                        foreach (var t in prop.Value.EnumerateObject())
                         {
-                            foreach (var t in prop.Value.EnumerateObject())
-                            {
-                                AddLanguage(t.Name);
-                                translations[t.Name] = t.Value.ValueKind == JsonValueKind.String
-                                    ? t.Value.GetString() ?? ""
-                                    : t.Value.ToString();
-                            }
+                            AddLanguage(t.Name);
+                            translations[t.Name] = t.Value.ValueKind == JsonValueKind.String
+                                ? t.Value.GetString() ?? ""
+                                : t.Value.ToString();
                         }
-                        else if (prop.Value.ValueKind == JsonValueKind.String)
-                        {
-                            AddLanguage(fileLang);
-                            translations[fileLang] = prop.Value.GetString() ?? "";
-                        }
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        AddLanguage(fileLang);
+                        translations[fileLang] = prop.Value.GetString() ?? "";
                     }
                 }
             }

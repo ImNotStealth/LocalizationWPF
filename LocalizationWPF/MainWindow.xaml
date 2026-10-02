@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LocalizationWPF"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Ultime Traduction System: Edition 2079 Premium Pro (Trial Edition)" Height="450" Width="800">
     <Grid>
         <Menu Height="20" VerticalAlignment="Top">
             <MenuItem x:Name="FileMenuItem" Header="File">
