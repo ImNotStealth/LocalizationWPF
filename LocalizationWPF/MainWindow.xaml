@@ -6,8 +6,14 @@
         xmlns:local="clr-namespace:LocalizationWPF"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <Label Content="Damien!" HorizontalAlignment="Left" Margin="247,139,0,0" VerticalAlignment="Top"/>
-
+    <Grid Margin="0,0,0,0">
+        <Menu Height="20" VerticalAlignment="Top" Margin="0,0,0,0">
+            <MenuItem x:Name="FileMenuItem" Header="File">
+                <MenuItem x:Name="OpenMenuItem" Header="Open"/>
+                <MenuItem x:Name="ExportMenuItem" Header="Export"/>
+                <MenuItem x:Name="QuitMenuItem" Header="Quit" Click="Quit"/>
+            </MenuItem>
+        </Menu>
+        <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" Margin="0,25,0,0"/>
     </Grid>
 </Window>

@@ -20,5 +20,10 @@ namespace LocalizationWPF
         {
             InitializeComponent();
         }
+
+        private void Quit(object sender, RoutedEventArgs e)
+        {
+            App.Current.Shutdown();
+        }
     }
 }
