@@ -54,6 +54,7 @@ namespace LocalizationWPF
                 ["CS"] = new(".cs", "Localization.cs", 2, path => ExportToCs(path)),
                 ["XML"] = new(".xml", "export.xml", 1, path => ExportToXml(path)),
                 ["CPP"] = new(".h", "Localization.h", 2, path => ExportToCpp(path)),
+                ["JSON"] = new(".json", "Localization.json", 2, path => ExportButtonJSON(path)),
                 // Pour ajouter un format : une ligne ici + une fonction d'écriture
                 // ["JSON"] = new(".json", "export.json", 1, path => ExportToJson(path)),
             };
@@ -160,7 +161,7 @@ namespace LocalizationWPF
             App.Current.Shutdown();
         }
 
-        private void ExportButtonJSON(object sender, RoutedEventArgs e)
+        private void ExportButtonJSON(object sender)
         {
             var dlg = new SaveFileDialog
             {
