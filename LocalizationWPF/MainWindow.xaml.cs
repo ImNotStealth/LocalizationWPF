@@ -25,5 +25,10 @@ namespace LocalizationWPF
         {
             App.Current.Shutdown();
         }
+
+        private void FileMenuItem_Click_1(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

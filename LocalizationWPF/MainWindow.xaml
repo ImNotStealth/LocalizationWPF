@@ -8,9 +8,19 @@
         Title="MainWindow" Height="450" Width="800">
     <Grid Margin="0,0,0,0">
         <Menu Height="20" VerticalAlignment="Top" Margin="0,0,0,0">
-            <MenuItem x:Name="FileMenuItem" Header="File">
-                <MenuItem x:Name="OpenMenuItem" Header="Open"/>
-                <MenuItem x:Name="ExportMenuItem" Header="Export"/>
+            <MenuItem x:Name="FileMenuItem" Header="File" Click="FileMenuItem_Click_1">
+                <MenuItem x:Name="OpenMenuItem" Header="Open">
+                    <MenuItem x:Name="ImportCSV" Header="Import CSV"/>
+                    <MenuItem x:Name="ImportXML" Header="Import XML"/>
+                    <MenuItem x:Name="ImportJSON" Header="Import JSON"/>
+                </MenuItem>
+                <MenuItem x:Name="ExportMenuItem" Header="Export">
+                    <MenuItem x:Name="ExportCSV" Header="Export CSV"/>
+                    <MenuItem x:Name="ExportXML" Header="Export XML"/>
+                    <MenuItem x:Name="ExportJSON" Header="Export JSON"/>
+                    <MenuItem x:Name="ExportCS" Header="Export CS"/>
+                    <MenuItem x:Name="ExportCPP" Header="Export CPP"/>
+                </MenuItem>
                 <MenuItem x:Name="QuitMenuItem" Header="Quit" Click="Quit"/>
             </MenuItem>
         </Menu>
