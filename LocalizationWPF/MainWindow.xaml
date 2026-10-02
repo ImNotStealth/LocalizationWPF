@@ -10,7 +10,7 @@
         <Menu Height="20" VerticalAlignment="Top">
             <MenuItem x:Name="FileMenuItem" Header="File">
                 <MenuItem x:Name="OpenMenuItem" Header="Open">
-                    <MenuItem x:Name="ImportCSV" Header="Import CSV"/>
+                    <MenuItem x:Name="ImportCSV" Header="Import CSV" Click="ImportCsvClick"/>
                     <MenuItem Header="Import XML..." Click="ImportXmlClick"/>
                     <MenuItem x:Name="ImportJSON" Header="Import JSON"/>
                 </MenuItem>

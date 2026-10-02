@@ -545,5 +545,147 @@ namespace LocalizationWPF
             EnsureTrailingEmptyRow();
             RefreshGrid();
         }
+
+        private void ImportCsvClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import CSV",
+                Filter = "CSV file (*.csv)|*.csv"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            try
+            {
+                ImportFromCsv(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur pendant l'import :\n{ex.Message}", "Import", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void ImportFromCsv(string path)
+        {
+            // ReadAllText détecte et retire le BOM UTF-8 automatiquement
+            string content = File.ReadAllText(path, Encoding.UTF8);
+
+            // Détection du séparateur sur la première ligne
+            string firstLine = content.Split('\n')[0];
+            char separator = ';';
+            int best = firstLine.Count(c => c == ';');
+            foreach (char candidate in new[] { ',', '\t' })
+            {
+                int count = firstLine.Count(c => c == candidate);
+                if (count > best)
+                {
+                    best = count;
+                    separator = candidate;
+                }
+            }
+
+            var rows = ParseCsv(content, separator)
+                .Where(r => r.Any(f => !string.IsNullOrWhiteSpace(f)))   // ignore les lignes vides
+                .ToList();
+
+            if (rows.Count == 0)
+                throw new InvalidDataException("Le fichier CSV est vide.");
+
+            LanguageGrid.CancelEdit(DataGridEditingUnit.Row);
+
+            _table.Rows.Clear();
+            _table.Columns.Clear();
+
+            // Première ligne = noms de colonnes (noms vides ou en double rendus uniques)
+            var headers = rows[0];
+            for (int c = 0; c < headers.Count; c++)
+            {
+                string name = headers[c].Trim();
+                if (name.Length == 0)
+                    name = $"Column{c + 1}";
+
+                string unique = name;
+                int n = 2;
+                while (_table.Columns.Contains(unique))
+                    unique = $"{name}_{n++}";
+
+                _table.Columns.Add(unique, typeof(string));
+            }
+
+            // Lignes de données (les champs en trop par rapport à l'en-tête sont ignorés)
+            for (int r = 1; r < rows.Count; r++)
+            {
+                var row = _table.NewRow();
+                for (int c = 0; c < _table.Columns.Count && c < rows[r].Count; c++)
+                    row[c] = rows[r][c];
+                _table.Rows.Add(row);
+            }
+
+            EnsureTrailingEmptyRow();
+            RefreshGrid();
+        }
+        private static List<List<string>> ParseCsv(string text, char separator)
+        {
+            var rows = new List<List<string>>();
+            var row = new List<string>();
+            var field = new StringBuilder();
+            bool inQuotes = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                if (inQuotes)
+                {
+                    if (c == '"')
+                    {
+                        if (i + 1 < text.Length && text[i + 1] == '"')
+                        {
+                            field.Append('"');   // "" = un guillemet littéral
+                            i++;
+                        }
+                        else
+                        {
+                            inQuotes = false;
+                        }
+                    }
+                    else
+                    {
+                        field.Append(c);         // y compris séparateurs et retours à la ligne
+                    }
+                }
+                else if (c == '"')
+                {
+                    inQuotes = true;
+                }
+                else if (c == separator)
+                {
+                    row.Add(field.ToString());
+                    field.Clear();
+                }
+                else if (c == '\n')
+                {
+                    row.Add(field.ToString());
+                    field.Clear();
+                    rows.Add(row);
+                    row = new List<string>();
+                }
+                else if (c != '\r')
+                {
+                    field.Append(c);
+                }
+            }
+
+            // Dernière ligne sans retour à la ligne final
+            if (field.Length > 0 || row.Count > 0)
+            {
+                row.Add(field.ToString());
+                rows.Add(row);
+            }
+
+            return rows;
+        }
     }
 }
