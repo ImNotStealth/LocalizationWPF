@@ -17,6 +17,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.IO;
 using Microsoft.Win32;
+using System.Xml.Linq;
 
 namespace LocalizationWPF
 {
@@ -58,6 +59,7 @@ namespace LocalizationWPF
             {
                 ["CSV"] = new(".csv", "export.csv", 1, path => ExportToCsv(path, ';')),
                 ["CS"] = new(".cs", "Localization.cs", 2, path => ExportToCs(path)),
+                ["XML"] = new(".xml", "export.xml", 1, path => ExportToXml(path)),
                 // Pour ajouter un format : une ligne ici + une fonction d'écriture
                 // ["JSON"] = new(".json", "export.json", 1, path => ExportToJson(path)),
             };
@@ -231,7 +233,27 @@ namespace LocalizationWPF
 
             return win.ShowDialog() == true ? box.Text : null;
         }
+        private void ExportToXml(string path)
+        {
+            var root = new XElement("Localization");
 
+            foreach (DataRow row in _table.Rows)
+            {
+                if (IsRowEmpty(row))
+                    continue;
+
+                var entry = new XElement("Entry");
+                foreach (DataColumn col in _table.Columns)
+                {
+                    string text = row[col] == DBNull.Value ? "" : row[col].ToString() ?? "";
+                    // Nom de colonne en attribut : pas de souci si la colonne contient des espaces/accents
+                    entry.Add(new XElement("Text", new XAttribute("column", col.ColumnName), text));
+                }
+                root.Add(entry);
+            }
+
+            new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+        }
         private void ExportMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not MenuItem { Tag: string key })

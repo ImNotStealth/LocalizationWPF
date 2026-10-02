@@ -16,7 +16,7 @@
                 </MenuItem>
                 <MenuItem x:Name="ExportMenuItem" Header="Export">
                     <MenuItem x:Name="ExportCSV" Header="Export CSV" Tag="CSV" Click="ExportMenuItem_Click"/>
-                    <MenuItem x:Name="ExportXML" Header="Export XML" Tag="XML" Click="ExportMenuItem_Click"/>
+                    <MenuItem Header="XML" Tag="XML" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportJSON" Header="Export JSON" Tag="JSON" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportCS" Header="Export CS" Tag="CS" Click="ExportMenuItem_Click"/>
                     <MenuItem x:Name="ExportCPP" Header="Export CPP" Tag="CPP" Click="ExportMenuItem_Click"/>
