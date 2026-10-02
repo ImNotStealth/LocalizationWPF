@@ -1,7 +1,9 @@
-﻿using System.ComponentModel;
+﻿using Microsoft.Win32;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,6 +17,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.IO;
 using Microsoft.Win32;
+
 namespace LocalizationWPF
 {
     class FileEntry : INotifyPropertyChanged
@@ -161,9 +164,46 @@ namespace LocalizationWPF
             App.Current.Shutdown();
         }
 
-        private void FileMenuItem_Click_1(object sender, RoutedEventArgs e)
+        private void ExportButtonJSON(object sender, RoutedEventArgs e)
         {
-		}
+            var dlg = new SaveFileDialog
+            {
+                Filter = "Fichier JSON (*.json)|*.json",
+                FileName = "localization.json"
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            var result = new Dictionary<string, Dictionary<string, string>>();
+
+            foreach (DataRow row in _table.Rows)
+            {
+                if (IsRowEmpty(row))
+                    continue;
+
+                string id = row["ID"]?.ToString()?.Trim() ?? "";
+                if (string.IsNullOrEmpty(id))
+                    continue;
+
+                var translations = new Dictionary<string, string>();
+                foreach (DataColumn col in _table.Columns)
+                {
+                    if (col.ColumnName == "ID")
+                        continue;
+                    translations[col.ColumnName] = row[col]?.ToString() ?? "";
+                }
+
+                result[id] = translations;
+            }
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            File.WriteAllText(dlg.FileName, JsonSerializer.Serialize(result, options), Encoding.UTF8);
+        }
 
         private string? Prompt(string title, string initial)
         {
@@ -191,7 +231,6 @@ namespace LocalizationWPF
 
             return win.ShowDialog() == true ? box.Text : null;
         }
-
 
         private void ExportMenuItem_Click(object sender, RoutedEventArgs e)
         {
@@ -347,6 +386,11 @@ namespace LocalizationWPF
             sb.AppendLine("}");
 
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
+		}
+		
+        private void FileMenuItem_Click_1(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }
