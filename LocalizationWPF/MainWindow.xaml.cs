@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,11 +15,6 @@ using System.Windows.Shapes;
 
 namespace LocalizationWPF
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    /// 
-
     class FileEntry : INotifyPropertyChanged
     {
         private string _output;
@@ -72,7 +68,7 @@ namespace LocalizationWPF
         }
         private void RenameColumnClick(object sender, RoutedEventArgs e)
         {
-            if (RightClickedColumn == null)
+            if (RightClickedColumn == null || RightClickedColumn.Header.ToString() == "ID")
                 return;
 
             string? newName = Prompt("Rename column", RightClickedColumn.Header?.ToString() ?? "");
@@ -82,8 +78,9 @@ namespace LocalizationWPF
 
         private void DeleteColumnClick(object sender, RoutedEventArgs e)
         {
-            if (RightClickedColumn == null)
+            if (RightClickedColumn == null || RightClickedColumn.Header.ToString() == "ID")
                 return;
+
             LanguageGrid.Columns.Remove(RightClickedColumn);
         }
 
