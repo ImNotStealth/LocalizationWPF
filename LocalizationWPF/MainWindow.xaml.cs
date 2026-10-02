@@ -489,5 +489,60 @@ namespace LocalizationWPF
                 "}");
             File.WriteAllText(Path.ChangeExtension(path, ".cpp"), sbSource.ToString(), new UTF8Encoding(false));
         }
+        private void ImportXmlClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import XML",
+                Filter = "XML file (*.xml)|*.xml"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            try
+            {
+                ImportFromXml(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur pendant l'import :\n{ex.Message}", "Import", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void ImportFromXml(string path)
+        {
+            var doc = XDocument.Load(path);
+            var entries = doc.Root?.Elements("Entry").ToList() ?? new List<XElement>();
+
+            if (entries.Count == 0)
+                throw new InvalidDataException("Aucune balise <Entry> trouvée dans le fichier.");
+
+            LanguageGrid.CancelEdit(DataGridEditingUnit.Row);
+
+            _table.Rows.Clear();
+            _table.Columns.Clear();
+
+            foreach (var text in entries.Elements("Text"))
+            {
+                string? col = text.Attribute("column")?.Value;
+                if (!string.IsNullOrWhiteSpace(col) && !_table.Columns.Contains(col))
+                    _table.Columns.Add(col, typeof(string));
+            }
+
+            foreach (var entry in entries)
+            {
+                var row = _table.NewRow();
+                foreach (var text in entry.Elements("Text"))
+                {
+                    string? col = text.Attribute("column")?.Value;
+                    if (!string.IsNullOrWhiteSpace(col))
+                        row[col] = text.Value;
+                }
+                _table.Rows.Add(row);
+            }
+
+            EnsureTrailingEmptyRow();
+            RefreshGrid();
+        }
     }
 }

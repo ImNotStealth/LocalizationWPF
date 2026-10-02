@@ -11,7 +11,7 @@
             <MenuItem x:Name="FileMenuItem" Header="File">
                 <MenuItem x:Name="OpenMenuItem" Header="Open">
                     <MenuItem x:Name="ImportCSV" Header="Import CSV"/>
-                    <MenuItem x:Name="ImportXML" Header="Import XML"/>
+                    <MenuItem Header="Import XML..." Click="ImportXmlClick"/>
                     <MenuItem x:Name="ImportJSON" Header="Import JSON"/>
                 </MenuItem>
                 <MenuItem x:Name="ExportMenuItem" Header="Export">
