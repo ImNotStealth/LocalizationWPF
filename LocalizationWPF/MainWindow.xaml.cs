@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace LocalizationWPF
 {
@@ -40,14 +41,61 @@ namespace LocalizationWPF
         }
     }
 
+
+
     public partial class MainWindow : Window
     {
+
         public MainWindow()
         {
             InitializeComponent();
+
+            _table.Columns.Add("ID", typeof(string));
+            _table.Columns.Add("English", typeof(string));
+            _table.Columns.Add("French", typeof(string));
+            _table.Columns.Add("Spanish", typeof(string));
+
+            EnsureTrailingEmptyRow();
+            RefreshGrid();
         }
+        private readonly DataTable _table = new();
         private DataGridColumn? RightClickedColumn;
 
+        private void EnsureTrailingEmptyRow()
+        {
+            // Supprime les lignes vides qui ne sont pas la dernière
+            for (int i = _table.Rows.Count - 2; i >= 0; i--)
+            {
+                if (IsRowEmpty(_table.Rows[i]))
+                    _table.Rows.RemoveAt(i);
+            }
+
+            // Ajoute une ligne vierge si la dernière contient quelque chose (ou s'il n'y a aucune ligne)
+            if (_table.Rows.Count == 0 || !IsRowEmpty(_table.Rows[_table.Rows.Count - 1]))
+                _table.Rows.Add(_table.NewRow());
+        }
+
+        private void RefreshGrid()
+        {
+            LanguageGrid.ItemsSource = null;
+            LanguageGrid.ItemsSource = _table.DefaultView;
+            RightClickedColumn = null;
+        }
+
+        private void LanguageGrid_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            // On attend que la valeur soit écrite dans la source avant de toucher aux lignes
+            Dispatcher.BeginInvoke(new Action(EnsureTrailingEmptyRow), DispatcherPriority.Background);
+        }
+        private static bool IsRowEmpty(DataRow row)
+        {
+            foreach (var item in row.ItemArray)
+            {
+                if (item != null && item != DBNull.Value && !string.IsNullOrWhiteSpace(item.ToString()))
+                    return false;
+            }
+            return true;
+        }
         private void DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             var d = e.OriginalSource as DependencyObject;
@@ -59,29 +107,43 @@ namespace LocalizationWPF
 
         private void AddColumnClick(object sender, RoutedEventArgs e)
         {
-            string name = $"Column{LanguageGrid.Columns.Count + 1}";
-            LanguageGrid.Columns.Add(new DataGridTextColumn
-            {
-                Header = name,
-                Binding = new Binding($"Custom[{name}]") { Mode = BindingMode.TwoWay }
-            });
+            int n = _table.Columns.Count + 1;
+            string name = $"Column{n}";
+            while (_table.Columns.Contains(name))
+                name = $"Column{++n}";
+
+            _table.Columns.Add(name, typeof(string));
+            RefreshGrid();
         }
         private void RenameColumnClick(object sender, RoutedEventArgs e)
         {
-            if (RightClickedColumn == null || RightClickedColumn.Header.ToString() == "ID")
+            if (RightClickedColumn == null)
                 return;
 
-            string? newName = Prompt("Rename column", RightClickedColumn.Header?.ToString() ?? "");
-            if (!string.IsNullOrWhiteSpace(newName))
-                RightClickedColumn.Header = newName;
+            string oldName = RightClickedColumn.Header?.ToString() ?? "";
+            if (!_table.Columns.Contains(oldName))
+                return;
+
+            string? newName = Prompt("Rename column", oldName);
+            if (string.IsNullOrWhiteSpace(newName) || _table.Columns.Contains(newName))
+                return;
+
+            _table.Columns[oldName]!.ColumnName = newName;
+            RefreshGrid();
         }
 
         private void DeleteColumnClick(object sender, RoutedEventArgs e)
         {
-            if (RightClickedColumn == null || RightClickedColumn.Header.ToString() == "ID")
+            if (RightClickedColumn == null)
                 return;
 
-            LanguageGrid.Columns.Remove(RightClickedColumn);
+            string name = RightClickedColumn.Header?.ToString() ?? "";
+            if (!_table.Columns.Contains(name))
+                return;
+
+            _table.Columns.Remove(name);
+            EnsureTrailingEmptyRow();
+            RefreshGrid();
         }
 
         private void Quit(object sender, RoutedEventArgs e)
