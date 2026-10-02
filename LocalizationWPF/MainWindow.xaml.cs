@@ -51,6 +51,14 @@ namespace LocalizationWPF
         {
             InitializeComponent();
 
+            _exportFormats = new Dictionary<string, ExportFormat>
+            {
+                ["CSV"] = new(".csv", "export.csv", 1, path => ExportToCsv(path, ';')),
+                ["CS"] = new(".cs", "Localization.cs", 2, path => ExportToCs(path)),
+                // Pour ajouter un format : une ligne ici + une fonction d'écriture
+                // ["JSON"] = new(".json", "export.json", 1, path => ExportToJson(path)),
+            };
+
             _table.Columns.Add("ID", typeof(string));
             _table.Columns.Add("English", typeof(string));
             _table.Columns.Add("French", typeof(string));
@@ -61,7 +69,8 @@ namespace LocalizationWPF
         }
         private readonly DataTable _table = new();
         private DataGridColumn? RightClickedColumn;
-
+        private record ExportFormat(string Extension, string DefaultFileName, int MinColumns, Action<string> Write);
+        private readonly Dictionary<string, ExportFormat> _exportFormats;
         private void EnsureTrailingEmptyRow()
         {
             // Supprime les lignes vides qui ne sont pas la dernière
@@ -184,17 +193,33 @@ namespace LocalizationWPF
         }
 
 
-        private void ExportMenuItem_Click_CSV(object sender, RoutedEventArgs e)
+        private void ExportMenuItem_Click(object sender, RoutedEventArgs e)
         {
+            if (sender is not MenuItem { Tag: string key })
+                return;
+
+            if (!_exportFormats.TryGetValue(key, out var format))
+            {
+                MessageBox.Show($"Le format {key} n'est pas encore géré.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             // Valide la cellule/ligne en cours d'édition pour ne pas perdre la dernière saisie
             LanguageGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
+            if (_table.Columns.Count < format.MinColumns)
+            {
+                MessageBox.Show("Il n'y a pas assez de colonnes pour ce format (il faut au moins une colonne ID et une colonne de langue).",
+                    "Export", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var dialog = new SaveFileDialog
             {
-                Title = "Export CSV",
-                Filter = "CSV file (*.csv)|*.csv",
-                DefaultExt = ".csv",
-                FileName = "export.csv"
+                Title = $"Export {key}",
+                Filter = $"{key} file (*{format.Extension})|*{format.Extension}",
+                DefaultExt = format.Extension,
+                FileName = format.DefaultFileName
             };
 
             if (dialog.ShowDialog(this) != true)
@@ -202,7 +227,7 @@ namespace LocalizationWPF
 
             try
             {
-                ExportToCsv(dialog.FileName, ';');
+                format.Write(dialog.FileName);
                 MessageBox.Show("Export terminé.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -237,6 +262,91 @@ namespace LocalizationWPF
 
             // UTF-8 avec BOM pour qu'Excel affiche correctement les accents (é, ñ...)
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(true));
+        }
+
+        private static string ToIdentifier(string? name, string fallback)
+        {
+            var sb = new StringBuilder();
+            foreach (char c in name ?? "")
+                sb.Append(char.IsLetterOrDigit(c) || c == '_' ? c : '_');
+
+            string result = sb.ToString();
+            if (result.Length == 0)
+                return fallback;
+            if (char.IsDigit(result[0]))
+                result = "_" + result;
+            return result;
+        }
+        private static string EscapeCs(string? value)
+        {
+            return (value ?? "")
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("\t", "\\t");
+        }
+        private void ExportToCs(string path)
+        {
+            // Noms d'enum uniques pour chaque colonne de langue (colonne 0 = ID)
+            var languageNames = new List<string>();
+            for (int c = 1; c < _table.Columns.Count; c++)
+            {
+                string name = ToIdentifier(_table.Columns[c].ColumnName, $"Language{c}");
+                while (languageNames.Contains(name))
+                    name += "_";
+                languageNames.Add(name);
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("// Fichier généré automatiquement - ne pas modifier à la main");
+            sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine();
+            sb.AppendLine("public enum Language");
+            sb.AppendLine("{");
+            foreach (string lang in languageNames)
+                sb.AppendLine($"    {lang},");
+            sb.AppendLine("}");
+            sb.AppendLine();
+            sb.AppendLine("public static class Localization");
+            sb.AppendLine("{");
+            sb.AppendLine($"    public static Language CurrentLanguage = Language.{languageNames[0]};");
+            sb.AppendLine();
+            sb.AppendLine("    private static readonly Dictionary<Language, Dictionary<string, string>> Data = new Dictionary<Language, Dictionary<string, string>>");
+            sb.AppendLine("    {");
+
+            for (int c = 1; c < _table.Columns.Count; c++)
+            {
+                sb.AppendLine($"        {{ Language.{languageNames[c - 1]}, new Dictionary<string, string>");
+                sb.AppendLine("            {");
+
+                foreach (DataRow row in _table.Rows)
+                {
+                    string id = row[0] == DBNull.Value ? "" : row[0].ToString() ?? "";
+                    if (string.IsNullOrWhiteSpace(id))
+                        continue;
+
+                    string text = row[c] == DBNull.Value ? "" : row[c].ToString() ?? "";
+                    sb.AppendLine($"                [\"{EscapeCs(id.Trim())}\"] = \"{EscapeCs(text)}\",");
+                }
+
+                sb.AppendLine("            }");
+                sb.AppendLine("        },");
+            }
+
+            sb.AppendLine("    };");
+            sb.AppendLine();
+            sb.AppendLine("    public static string Get(string id)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        Dictionary<string, string> table;");
+            sb.AppendLine("        string value;");
+            sb.AppendLine("        if (Data.TryGetValue(CurrentLanguage, out table) && table.TryGetValue(id, out value) && !string.IsNullOrEmpty(value))");
+            sb.AppendLine("            return value;");
+            sb.AppendLine("        return id;");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+
+            File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
         }
     }
 }
