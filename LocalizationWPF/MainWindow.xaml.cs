@@ -1,24 +1,17 @@
 ﻿using Microsoft.Win32;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.IO;
-using Microsoft.Win32;
 using System.Xml.Linq;
-
+using System.Diagnostics;
 namespace LocalizationWPF
 {
     class FileEntry : INotifyPropertyChanged
@@ -60,6 +53,7 @@ namespace LocalizationWPF
                 ["CSV"] = new(".csv", "export.csv", 1, path => ExportToCsv(path, ';')),
                 ["CS"] = new(".cs", "Localization.cs", 2, path => ExportToCs(path)),
                 ["XML"] = new(".xml", "export.xml", 1, path => ExportToXml(path)),
+                ["CPP"] = new(".h", "Localization.h", 2, path => ExportToCpp(path)),
                 // Pour ajouter un format : une ligne ici + une fonction d'écriture
                 // ["JSON"] = new(".json", "export.json", 1, path => ExportToJson(path)),
             };
@@ -409,10 +403,91 @@ namespace LocalizationWPF
 
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
 		}
-		
-        private void FileMenuItem_Click_1(object sender, RoutedEventArgs e)
-        {
 
+        private void ExportToCpp(string path)
+        {
+            // Noms d'enum uniques pour chaque colonne de langue (colonne 0 = ID)
+            var languageNames = new List<string>();
+            for (int c = 1; c < _table.Columns.Count; c++)
+            {
+                string name = ToIdentifier(_table.Columns[c].ColumnName, $"Language{c}");
+                while (languageNames.Contains(name))
+                    name += "_";
+                languageNames.Add(name);
+            }
+
+            StringBuilder sbHeadEnum = new StringBuilder();
+            for (int i = 0; i < languageNames.Count; i++)
+                sbHeadEnum.AppendFormat("\t\t{0}{1}\n", languageNames[i], i != languageNames.Count - 1 ? "," : "");
+
+            StringBuilder sbHead = new StringBuilder();
+            sbHead.AppendLine("#pragma once\n" +
+                "// Fichier généré automatiquement - ne pas modifier à la main\n" +
+                "\n" +
+                "#include <string>\n" +
+                "#include <unordered_map>\n" +
+                "\n" +
+                "class Localization\n" +
+                "{\n" +
+                "public:\n" +
+                "\tenum class Locale\n" +
+                "\t{\n" +
+                sbHeadEnum.ToString() +
+                "\t};\n" +
+                "\n" +
+                "\tstatic const std::string& Get(Locale locale, const std::string& key);\n" +
+                "\tusing LocaleMap = std::unordered_map<Localization::Locale, std::unordered_map<std::string, std::string>>;\n" +
+                "\n" +
+                "private:\n" +
+                "\tstatic LocaleMap BuildMap();\n" +
+                "\n" +
+                "private:\n" +
+                "\tstatic LocaleMap s_Map;\n" +
+                "\tstatic std::string s_InvalidLang, s_InvalidKey;\n" +
+                "};");
+            File.WriteAllText(path, sbHead.ToString(), new UTF8Encoding(false));
+
+
+            StringBuilder sbSourceLang = new StringBuilder();
+            for (int c = 1; c < _table.Columns.Count; c++)
+            {
+                Trace.WriteLine(_table.Columns[c].ColumnName);
+                foreach (DataRow row in _table.Rows)
+                {
+                    string id = row[0] == DBNull.Value ? "" : row[0].ToString() ?? "";
+                    if (string.IsNullOrWhiteSpace(id))
+                        continue;
+
+                    string text = row[c] == DBNull.Value ? "" : row[c].ToString() ?? "";
+                    sbSourceLang.AppendFormat("\tmap[Locale::{0}][\"{1}\"] = \"{2}\";\n", _table.Columns[c].ColumnName, id.Trim(), text);
+                }
+            }
+
+            StringBuilder sbSource = new StringBuilder();
+            sbSource.AppendLine("#include \"Localization.h\"\n" +
+                "\n" +
+                "Localization::LocaleMap Localization::s_Map = BuildMap();\n" +
+                "std::string Localization::s_InvalidLang = \"INVALID_LANG\";\n" +
+                "std::string Localization::s_InvalidKey = \"INVALID_KEY\";\n" +
+                "\n" +
+                "const std::string& Localization::Get(Locale locale, const std::string& key)\n" +
+                "{\n" +
+                "\tif (s_Map.find(locale) == s_Map.end())\n" +
+                "\t\treturn s_InvalidLang;\n" +
+                "\n" +
+                "\tif (s_Map[locale].find(key) == s_Map[locale].end())\n" +
+                "\t\treturn s_InvalidKey;\n" +
+                "\n" +
+                "\treturn s_Map[locale][key];\n" +
+                "}\n" +
+                "\n" +
+                "Localization::LocaleMap Localization::BuildMap()\n" +
+                "{\n" +
+                "\tLocalization::LocaleMap map;\n" +
+                sbSourceLang.ToString() +
+                "\treturn map;\n" +
+                "}");
+            File.WriteAllText(Path.ChangeExtension(path, ".cpp"), sbSource.ToString(), new UTF8Encoding(false));
         }
     }
 }

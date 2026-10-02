@@ -8,7 +8,7 @@
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Menu Height="20" VerticalAlignment="Top">
-            <MenuItem x:Name="FileMenuItem" Header="File" Click="FileMenuItem_Click_1">
+            <MenuItem x:Name="FileMenuItem" Header="File">
                 <MenuItem x:Name="OpenMenuItem" Header="Open">
                     <MenuItem x:Name="ImportCSV" Header="Import CSV"/>
                     <MenuItem x:Name="ImportXML" Header="Import XML"/>
