@@ -38,6 +38,9 @@
                     <MenuItem Header="Delete column" Click="DeleteColumnClick"/>
                 </ContextMenu>
             </DataGrid.ContextMenu>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" ></DataGridTextColumn>
+            </DataGrid.Columns>
         </DataGrid>
     </Grid>
 </Window>
