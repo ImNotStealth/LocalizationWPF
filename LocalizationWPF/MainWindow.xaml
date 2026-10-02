@@ -15,7 +15,7 @@
                     <MenuItem x:Name="ImportJSON" Header="Import JSON"/>
                 </MenuItem>
                 <MenuItem x:Name="ExportMenuItem" Header="Export">
-                    <MenuItem x:Name="ExportCSV" Header="Export CSV"/>
+                    <MenuItem x:Name="ExportCSV" Header="Export CSV" Click="ExportMenuItem_Click_CSV"/>
                     <MenuItem x:Name="ExportXML" Header="Export XML"/>
                     <MenuItem x:Name="ExportJSON" Header="Export JSON"/>
                     <MenuItem x:Name="ExportCS" Header="Export CS"/>

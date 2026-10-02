@@ -13,7 +13,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-
+using System.IO;
+using Microsoft.Win32;
 namespace LocalizationWPF
 {
     class FileEntry : INotifyPropertyChanged
@@ -180,6 +181,62 @@ namespace LocalizationWPF
             box.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
 
             return win.ShowDialog() == true ? box.Text : null;
+        }
+
+
+        private void ExportMenuItem_Click_CSV(object sender, RoutedEventArgs e)
+        {
+            // Valide la cellule/ligne en cours d'édition pour ne pas perdre la dernière saisie
+            LanguageGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export CSV",
+                Filter = "CSV file (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = "export.csv"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            try
+            {
+                ExportToCsv(dialog.FileName, ';');
+                MessageBox.Show("Export terminé.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur pendant l'export :\n{ex.Message}", "Export", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportToCsv(string path, char separator)
+        {
+            string Escape(string? value)
+            {
+                value ??= "";
+                bool mustQuote = value.Contains(separator) || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
+                value = value.Replace("\"", "\"\"");
+                return mustQuote ? $"\"{value}\"" : value;
+            }
+
+            var sb = new StringBuilder();
+
+            // En-têtes
+            sb.AppendLine(string.Join(separator, _table.Columns.Cast<DataColumn>().Select(c => Escape(c.ColumnName))));
+
+            // Lignes (on saute les lignes entièrement vides, donc la ligne vierge du bas)
+            foreach (DataRow row in _table.Rows)
+            {
+                if (IsRowEmpty(row))
+                    continue;
+
+                sb.AppendLine(string.Join(separator, row.ItemArray.Select(v => Escape(v == DBNull.Value ? null : v?.ToString()))));
+            }
+
+            // UTF-8 avec BOM pour qu'Excel affiche correctement les accents (é, ñ...)
+            File.WriteAllText(path, sb.ToString(), new UTF8Encoding(true));
         }
     }
 }
