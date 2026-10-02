@@ -24,6 +24,19 @@
                 <MenuItem x:Name="QuitMenuItem" Header="Quit" Click="Quit"/>
             </MenuItem>
         </Menu>
-        <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" Margin="0,25,0,0"/>
+
+        <DataGrid x:Name="LanguageGrid"
+          Grid.Row="1"
+          AutoGenerateColumns="True"
+          CanUserReorderColumns="False"
+          PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown">
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Add column" Click="AddColumnClick"/>
+                    <MenuItem Header="Rename column" Click="RenameColumnClick"/>
+                    <MenuItem Header="Delete column" Click="DeleteColumnClick"/>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+        </DataGrid>
     </Grid>
 </Window>
